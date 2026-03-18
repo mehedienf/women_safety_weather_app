@@ -1,0 +1,82 @@
+name: women_safety_weather_app
+description: "Women Safety & Disaster Management App for Bangladesh"
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Maps & Location
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geolocator: ^13.0.2
+
+  # Networking
+  http: ^1.2.2
+
+  # State Management
+  provider: ^6.1.2
+
+  # Local Storage
+  shared_preferences: ^2.3.3
+
+  # Local Notifications
+  flutter_local_notifications: ^18.0.1
+
+  # URL Launcher (for SOS call)
+  url_launcher: ^6.3.1
+
+  # Direct phone call without opening the dialer
+  flutter_phone_direct_caller: ^2.1.1
+
+  # Runtime permission requests (CALL_PHONE, SEND_SMS)
+  permission_handler: ^11.3.1
+
+  # Date / Time formatting
+  intl: ^0.20.2
+
+  # Media (for guidelines videos/audio)
+  video_player: ^2.9.3
+  path_provider: ^2.1.5
+
+  # Cached network images
+  cached_network_image: ^3.4.1
+
+  # Bengali font support
+  google_fonts: ^6.2.1
+
+  # Cupertino icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FCE4EC"
+  adaptive_icon_foreground: "assets/icons/app_icon.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icons/
+    - assets/images/
+    - assets/videos/
