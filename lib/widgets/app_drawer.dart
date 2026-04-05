@@ -1,7 +1,26 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/family_info_model.dart';
-import '../services/family_info_service.dart';
 import '../profile_page.dart';
+import '../services/family_info_service.dart';
+
+const String _baseUrl = 'https://flicksize.com/women_safety/';
+
+String _normalizeBdMobile(String rawMobile) {
+  var digits = rawMobile.replaceAll(RegExp(r'\D+'), '');
+
+  if (digits.startsWith('880') && digits.length == 13) {
+    digits = '0${digits.substring(3)}';
+  } else if (digits.startsWith('88') && digits.length == 12) {
+    digits = '0${digits.substring(2)}';
+  }
+
+  return digits;
+}
 
 /// Shared Application Drawer
 ///
@@ -26,6 +45,7 @@ class AppDrawer extends StatefulWidget {
 
 class _AppDrawerState extends State<AppDrawer> {
   FamilyInfo? _familyInfo;
+  bool _unsubscribing = false;
 
   @override
   void initState() {
@@ -45,6 +65,104 @@ class _AppDrawerState extends State<AppDrawer> {
         if (mounted) setState(() => _familyInfo = info);
       });
     });
+  }
+
+  Future<void> _unsubscribeFromDrawer() async {
+    if (_unsubscribing) return;
+
+    final shouldUnsubscribe = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('সাবস্ক্রিপশন বাতিল করবেন?'),
+        content: const Text('বাতিল করলে আবার OTP দিয়ে লগইন করতে হবে।'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('না'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('হ্যাঁ, বাতিল করুন'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldUnsubscribe != true) return;
+
+    // Close drawer after confirmation so this State stays valid for the dialog.
+    Navigator.pop(context);
+
+    setState(() => _unsubscribing = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedPhone =
+          prefs.getString('userPhone') ?? _familyInfo?.phoneNumber ?? '';
+      final phone = _normalizeBdMobile(storedPhone.trim());
+
+      if (phone.isEmpty) {
+        throw Exception('কোনো মোবাইল নম্বর পাওয়া যায়নি');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('${_baseUrl}unsubscribe.php'),
+            body: {'user_mobile': phone},
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        throw Exception('Server error: ${response.statusCode}');
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final status =
+            decoded['statusCode']?.toString().trim().toUpperCase() ?? '';
+        final statusDetail = decoded['statusDetail']?.toString().trim() ?? '';
+        final message = decoded['message']?.toString().trim() ?? '';
+        final success =
+            decoded['success'] == true ||
+            status == 'S1000' ||
+            status == 'SUCCESS' ||
+            status == 'OK';
+
+        if (!success) {
+          final serverMsg = message.isNotEmpty
+              ? message
+              : (statusDetail.isNotEmpty ? statusDetail : 'Unsubscribe failed');
+          throw Exception(serverMsg);
+        }
+      }
+
+      await prefs.setBool('isLoggedIn', false);
+      await prefs.remove('userPhone');
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('সাবস্ক্রিপশন বাতিল করা হয়েছে'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('সাবস্ক্রিপশন বাতিল করা যায়নি: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _unsubscribing = false);
+      }
+    }
   }
 
   @override
@@ -136,6 +254,14 @@ class _AppDrawerState extends State<AppDrawer> {
                   onTap: () => Navigator.pop(context),
                   comingSoon: true,
                 ),
+                _DrawerItem(
+                  icon: Icons.remove_circle_outline_rounded,
+                  label: _unsubscribing
+                      ? 'সাবস্ক্রিপশন বাতিল হচ্ছে...'
+                      : 'আনসাবস্ক্রাইব করুন',
+                  customColor: const Color(0xFFD32F2F),
+                  onTap: _unsubscribeFromDrawer,
+                ),
               ],
             ),
           ),
@@ -161,6 +287,7 @@ class _DrawerItem extends StatelessWidget {
   final VoidCallback onTap;
   final bool selected;
   final bool comingSoon;
+  final Color? customColor;
 
   const _DrawerItem({
     required this.icon,
@@ -168,22 +295,23 @@ class _DrawerItem extends StatelessWidget {
     required this.onTap,
     this.selected = false,
     this.comingSoon = false,
+    this.customColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final itemColor =
+        customColor ??
+        (selected ? const Color(0xFF1565C0) : const Color(0xFF1A3A6B));
+
     return ListTile(
-      leading: Icon(
-        icon,
-        color: selected ? const Color(0xFF1565C0) : const Color(0xFF1A3A6B),
-        size: 24,
-      ),
+      leading: Icon(icon, color: itemColor, size: 24),
       title: Text(
         label,
         style: TextStyle(
           fontSize: 16,
           fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          color: selected ? const Color(0xFF1565C0) : const Color(0xFF0D1B2A),
+          color: itemColor,
         ),
       ),
       tileColor: selected ? const Color(0xFFEFF6FF) : Colors.transparent,

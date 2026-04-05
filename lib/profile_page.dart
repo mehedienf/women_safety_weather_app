@@ -1,7 +1,26 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'models/family_info_model.dart';
 import 'services/family_info_service.dart';
 import 'widgets/family_info_form.dart';
+
+const String _baseUrl = 'https://flicksize.com/women_safety/';
+
+String _normalizeBdMobile(String rawMobile) {
+  var digits = rawMobile.replaceAll(RegExp(r'\D+'), '');
+
+  if (digits.startsWith('880') && digits.length == 13) {
+    digits = '0${digits.substring(3)}';
+  } else if (digits.startsWith('88') && digits.length == 12) {
+    digits = '0${digits.substring(2)}';
+  }
+
+  return digits;
+}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -14,6 +33,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final _service = FamilyInfoService();
   FamilyInfo? _info;
   bool _loading = true;
+  bool _unsubscribing = false;
 
   @override
   void initState() {
@@ -49,6 +69,102 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Future<void> _unsubscribe() async {
+    if (_unsubscribing) return;
+
+    final shouldUnsubscribe = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('সাবস্ক্রিপশন বাতিল করবেন?'),
+        content: const Text(
+          'এতে আপনার বর্তমান লগইন সেশন মুছে যাবে এবং আবার OTP দিয়ে লগইন করতে হবে।',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('না'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('হ্যাঁ, বাতিল করুন'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldUnsubscribe != true) return;
+
+    setState(() => _unsubscribing = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedPhone =
+          prefs.getString('userPhone') ?? _info?.phoneNumber ?? '';
+      final phone = _normalizeBdMobile(storedPhone.trim());
+
+      if (phone.isEmpty) {
+        throw Exception('কোনো মোবাইল নম্বর পাওয়া যায়নি');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('${_baseUrl}unsubscribe.php'),
+            body: {'user_mobile': phone},
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        throw Exception('Server error: ${response.statusCode}');
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final status =
+            decoded['statusCode']?.toString().trim().toUpperCase() ?? '';
+        final success =
+            decoded['success'] == true ||
+            status == 'S1000' ||
+            status == 'SUCCESS' ||
+            status == 'OK';
+
+        if (!success) {
+          final message = decoded['message']?.toString().trim() ?? '';
+          throw Exception(message.isNotEmpty ? message : 'Unsubscribe failed');
+        }
+      }
+
+      await prefs.setBool('isLoggedIn', false);
+      await prefs.remove('userPhone');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('সাবস্ক্রিপশন বাতিল করা হয়েছে'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 350));
+      if (!mounted) return;
+
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('সাবস্ক্রিপশন বাতিল করা যায়নি: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _unsubscribing = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
@@ -57,7 +173,6 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: const Color(0xFFF4F6FA),
       body: Column(
         children: [
-          // ── Gradient Header ───────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: EdgeInsets.only(
@@ -76,7 +191,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             child: Column(
               children: [
-                // Back + title row
                 Row(
                   children: [
                     GestureDetector(
@@ -130,7 +244,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                // Avatar circle
                 Container(
                   width: 80,
                   height: 80,
@@ -183,7 +296,12 @@ class _ProfilePageState extends State<ProfilePage> {
                 ? const Center(child: CircularProgressIndicator())
                 : _info == null
                 ? _EmptyState(onTap: _showEditSheet)
-                : _InfoBody(info: _info!, onEdit: _showEditSheet),
+                : _InfoBody(
+                    info: _info!,
+                    onEdit: _showEditSheet,
+                    onUnsubscribe: _unsubscribe,
+                    unsubscribing: _unsubscribing,
+                  ),
           ),
         ],
       ),
@@ -196,7 +314,14 @@ class _ProfilePageState extends State<ProfilePage> {
 class _InfoBody extends StatelessWidget {
   final FamilyInfo info;
   final VoidCallback onEdit;
-  const _InfoBody({required this.info, required this.onEdit});
+  final VoidCallback onUnsubscribe;
+  final bool unsubscribing;
+  const _InfoBody({
+    required this.info,
+    required this.onEdit,
+    required this.onUnsubscribe,
+    required this.unsubscribing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -294,6 +419,33 @@ class _InfoBody extends StatelessWidget {
                 elevation: 0,
                 textStyle: const TextStyle(
                   fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: unsubscribing ? null : onUnsubscribe,
+              icon: unsubscribing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.remove_circle_outline_rounded),
+              label: const Text('সাবস্ক্রিপশন বাতিল করুন'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFD32F2F),
+                side: const BorderSide(color: Color(0xFFD32F2F)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
               ),
