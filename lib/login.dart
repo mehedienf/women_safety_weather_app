@@ -1,6 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const String _baseUrl = 'https://flicksize.com/women_safety/';
@@ -118,8 +119,6 @@ class _LoginPageState extends State<LoginPage> {
       final message = otpData['message']?.toString() ?? '';
       final statusDetail = otpData['statusDetail']?.toString() ?? '';
       final statusCode = otpData['statusCode']?.toString().trim() ?? '';
-      final rawResponse = otpData['raw']?.toString() ?? '';
-      final httpCode = otpData['httpCode']?.toString() ?? '';
 
       if (success && referenceNo.isNotEmpty) {
         if (!mounted) return;
@@ -310,27 +309,8 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
         await prefs.setBool('isLoggedIn', true);
         await prefs.setString('userPhone', widget.phone);
 
-        // Wait for subscription status to become REGISTERED (up to 30 seconds)
-        final subscribed = await _waitForSubscriptionSync();
-
-        if (subscribed) {
-          // Charging successful - user is now registered
-          if (!mounted) return;
-          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-        } else {
-          // Charging is taking longer - let user know they can check back
-          if (!mounted) return;
-          _showWarning(
-            'সাবস্ক্রিপশন চলছে। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।',
-          );
-          await Future.delayed(const Duration(seconds: 2));
-          if (!mounted) return;
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            '/login',
-            (route) => false,
-          );
-        }
+        if (!mounted) return;
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       } else {
         final message = data['message']?.toString() ?? 'OTP ভুল হয়েছে';
         _showError(message);
@@ -342,55 +322,11 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
     }
   }
 
-  // Wait for subscription to sync - check 30 times with 1-second intervals
-  Future<bool> _waitForSubscriptionSync() async {
-    for (var i = 0; i < 30; i++) {
-      await Future.delayed(const Duration(seconds: 1));
-
-      try {
-        final response = await http
-            .post(
-              Uri.parse('${_baseUrl}check_subscription.php'),
-              body: {'user_mobile': widget.phone},
-            )
-            .timeout(const Duration(seconds: 5));
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          if (data is Map<String, dynamic>) {
-            final status =
-                data['subscriptionStatus']?.toString().trim().toUpperCase() ??
-                '';
-            // Only accept REGISTERED (means charging succeeded)
-            if (status == 'REGISTERED') {
-              return true;
-            }
-          }
-        }
-      } catch (e) {
-        // Continue checking
-      }
-    }
-
-    return false;
-  }
-
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
         backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
-    );
-  }
-
-  void _showWarning(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Colors.orange,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
       ),
