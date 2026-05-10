@@ -79,3 +79,8 @@ flutter:
   assets:
     - assets/icons/
     - assets/videos/
+
+  fonts:
+    - family: TiroBangla
+      fonts:
+        - asset: assets/fonts/TiroBangla-Regular.ttf

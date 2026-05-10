@@ -67,7 +67,10 @@ class WomenSafetyDisasterApp extends StatelessWidget {
             brightness: Brightness.light,
           ),
           scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-          textTheme: GoogleFonts.notoSansBengaliTextTheme(),
+          textTheme: GoogleFonts.notoSansBengaliTextTheme().apply(
+            fontFamily: 'TiroBangla',
+          ),
+
           cardTheme: const CardThemeData(
             elevation: 0,
             color: Colors.white,
