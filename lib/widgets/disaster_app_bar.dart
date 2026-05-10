@@ -612,7 +612,7 @@ class _TickerTapeState extends State<_TickerTape>
         .watch<AdminNotificationProvider>()
         .notifications;
     final text = notifications.isEmpty
-        ? '📢  আপনার জেলার সর্বশেষ বিজ্ঞপ্তিগুলো এখানে দেখা যাবে'
+        ? '📢 কোন নতুন বিজ্ঞপ্তি নেই'
         : '📢  ${notifications.map((n) => n.title).join('   •   ')}   ';
 
     return LayoutBuilder(

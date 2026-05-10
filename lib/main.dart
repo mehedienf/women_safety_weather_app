@@ -126,14 +126,14 @@ class _StartupGateState extends State<_StartupGate> {
       prefs.getString('userPhone')?.trim() ?? '',
     );
 
-    bool goHome = false;
+    bool goHome = isLoggedIn;
 
     if (isLoggedIn && phone.isNotEmpty && _isAllowedRobiAirtel(phone)) {
       try {
         final response = await http.post(
           Uri.parse('$_baseUrl/check_subscription.php'),
           body: {'user_mobile': phone},
-        );
+        ).timeout(const Duration(seconds: 5));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -143,21 +143,21 @@ class _StartupGateState extends State<_StartupGate> {
           final isSubscribedFlag =
               boolFlag == true || boolFlag?.toString() == '1';
 
-          goHome =
-              isSubscribedFlag ||
+          final isSubscribed = isSubscribedFlag ||
               status == 'SUBSCRIBED' ||
               status == 'ACTIVATED' ||
               status == 'REGISTERED';
+              
+          if (!isSubscribed) {
+            goHome = false;
+            await prefs.setBool('isLoggedIn', false);
+          }
         }
       } catch (_) {
-        goHome = false;
+        // In case of network error, do not log the user out
       }
-
-      if (!goHome) {
-        await prefs.setBool('isLoggedIn', false);
-      }
-    } else if (isLoggedIn) {
-      await prefs.setBool('isLoggedIn', false);
+    } else if (!isLoggedIn) {
+      goHome = false;
     }
 
     if (!mounted) return;

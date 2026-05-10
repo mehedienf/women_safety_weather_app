@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -221,6 +222,18 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 8),
               const Text('মোবাইল নম্বর দিন', textAlign: TextAlign.center),
               const SizedBox(height: 32),
+              const SizedBox(height: 8),
+              Text(
+                // 'Daily 2 taka(VAT+SD+SC) subscription charge',
+                'চার্জ 2 টাকা + VAT+SD+SC/দিন',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 32),
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
@@ -272,6 +285,49 @@ class OtpVerifyPage extends StatefulWidget {
 class _OtpVerifyPageState extends State<OtpVerifyPage> {
   final TextEditingController _otpController = TextEditingController();
   bool _isLoading = false;
+  late Timer _timer;
+  int _remainingSeconds = 240; // 4 minutes = 240 seconds
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        if (_remainingSeconds > 0) {
+          _remainingSeconds--;
+        } else {
+          _timer.cancel();
+        }
+      });
+    });
+  }
+
+  String _formatTime(int seconds) {
+    final minutes = seconds ~/ 60;
+    final secs = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  Color _getTimerColor() {
+    if (_remainingSeconds > 120) return Colors.green;
+    if (_remainingSeconds > 60) return Colors.orange;
+    return Colors.red;
+  }
+
+  String _readString(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value != null) {
+        final text = value.toString().trim();
+        if (text.isNotEmpty) return text;
+      }
+    }
+    return '';
+  }
 
   Future<void> _verifyOtp() async {
     final otp = _otpController.text.trim();
@@ -300,20 +356,42 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
         return;
       }
 
-      final statusCode =
-          data['statusCode']?.toString().trim().toUpperCase() ?? '';
+      // final statusCode =
+      //     data['statusCode']?.toString().trim().toUpperCase() ?? '';
+      final statusCode = _readString(data, [
+        'statusCode',
+        'StatusCode',
+        'status_code',
+      ]).toUpperCase();
+      final successFlag =
+          data['success'] == true ||
+          _readString(data, ['status', 'result']).toLowerCase() == 'success';
 
-      if (statusCode == 'S1000') {
+      if (statusCode == 'S1000' || successFlag) {
         // OTP verified successfully - save credentials immediately
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isLoggedIn', true);
         await prefs.setString('userPhone', widget.phone);
 
+        // Wait briefly for subscription sync, then continue to home.
+        final subscribed = await _waitForSubscriptionSync();
+
         if (!mounted) return;
+        if (!subscribed) {
+          _showWarning('সাবস্ক্রিপশন চলছে। অ্যাপ লোড হচ্ছে...');
+          await Future.delayed(const Duration(seconds: 1));
+          if (!mounted) return;
+        }
+
         Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       } else {
-        final message = data['message']?.toString() ?? 'OTP ভুল হয়েছে';
-        _showError(message);
+        final message = _readString(data, [
+          'message',
+          'statusDetail',
+          'error',
+          'errorMessage',
+        ]);
+        _showError(message.isNotEmpty ? message : 'OTP ভুল হয়েছে');
       }
     } catch (e) {
       _showError('নেটওয়ার্ক সমস্যা হয়েছে: ${e.toString()}');
@@ -322,11 +400,66 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
     }
   }
 
+  // void _showError(String msg) {
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     SnackBar(
+  //       content: Text(msg),
+  //       backgroundColor: Colors.redAccent,
+  //       behavior: SnackBarBehavior.floating,
+  //       duration: const Duration(seconds: 4),
+  //     ),
+  //   );
+  // }
+
+  // Wait for subscription to sync - reduced to 5 checks for faster UX.
+  Future<bool> _waitForSubscriptionSync() async {
+    for (var i = 0; i < 5; i++) {
+      await Future.delayed(const Duration(seconds: 1));
+
+      try {
+        final response = await http
+            .post(
+              Uri.parse('${_baseUrl}check_subscription.php'),
+              body: {'user_mobile': widget.phone},
+            )
+            .timeout(const Duration(seconds: 5));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data is Map<String, dynamic>) {
+            final status =
+                data['subscriptionStatus']?.toString().trim().toUpperCase() ??
+                '';
+            // Only accept REGISTERED (means charging succeeded)
+            if (status == 'REGISTERED') {
+              return true;
+            }
+          }
+        }
+      } catch (e) {
+        // Continue checking
+      }
+    }
+
+    return false;
+  }
+
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
         backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  void _showWarning(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.orange,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
       ),
@@ -370,12 +503,50 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'RefNo: ${widget.referenceNo}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                const SizedBox(height: 32),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _getTimerColor().withValues(alpha: 0.1),
+                    border: Border.all(color: _getTimerColor(), width: 2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'OTP এর সময় বাকি',
+                        style: TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _formatTime(_remainingSeconds),
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: _getTimerColor(),
+                        ),
+                      ),
+                      if (_remainingSeconds <= 60)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: Text(
+                            'সময় শেষ হয়ে যাচ্ছে!',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.red,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
+                // const SizedBox(height: 24),
+                // Text(
+                //   'RefNo: ${widget.referenceNo}',
+                //   textAlign: TextAlign.center,
+                //   style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                // ),
                 const SizedBox(height: 32),
                 TextField(
                   controller: _otpController,
@@ -408,7 +579,7 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: _isLoading ? null : () => Navigator.pop(context),
-                  child: const Text('ভুল নম্বর? পিছনে যাও'),
+                  child: const Text('ভুল নম্বর? আবার চেষ্টা করুন'),
                 ),
               ],
             ),
