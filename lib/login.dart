@@ -295,7 +295,8 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
   }
 
   void _startCountdown() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
       setState(() {
         if (_remainingSeconds > 0) {
           _remainingSeconds--;
@@ -468,6 +469,7 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
 
   @override
   void dispose() {
+    _timer.cancel();
     _otpController.dispose();
     super.dispose();
   }

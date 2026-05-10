@@ -89,7 +89,7 @@ class _AppDrawerState extends State<AppDrawer> {
     );
 
     if (shouldUnsubscribe != true) return;
-    if(!mounted) return;
+    if (!mounted) return;
     // Close drawer after confirmation so this State stays valid for the dialog.
     Navigator.pop(context);
 
@@ -147,6 +147,8 @@ class _AppDrawerState extends State<AppDrawer> {
         ),
       );
 
+      // After clearing login prefs, avoid running any remaining in-app navigation.
+      // Use a pushNamedAndRemoveUntil to ensure we land on login gate.
       await Future.delayed(const Duration(milliseconds: 250));
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
