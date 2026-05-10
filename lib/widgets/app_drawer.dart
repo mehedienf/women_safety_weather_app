@@ -216,7 +216,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 Text(
                   _familyInfo?.headOfFamilyName?.isNotEmpty == true
                       ? _familyInfo!.headOfFamilyName!
-                      : 'প্রান্তিক',
+                      : 'Safe BD',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,

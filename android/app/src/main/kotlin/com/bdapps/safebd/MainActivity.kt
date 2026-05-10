@@ -1,4 +1,4 @@
-package com.disastermgmt.women_safety_weather_app
+package com.bdapps.safebd
 
 import android.os.Build
 import android.telephony.SmsManager

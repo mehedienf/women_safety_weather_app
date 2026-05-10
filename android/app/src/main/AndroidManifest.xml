@@ -18,7 +18,7 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
 
     <application
-        android:label="দুর্যোগ ও নারী সেবা"
+        android:label="Safe BD"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -1,6 +1,6 @@
 {
-    "name": "women_safety_weather_app",
-    "short_name": "women_safety_weather_app",
+    "name": "Safe BD",
+    "short_name": "Safe BD",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
