@@ -65,8 +65,8 @@ class DisasterAppBar extends StatelessWidget implements PreferredSizeWidget {
                         : _defaultLayout(context, app),
                   ),
                 ),
-                if (showTickerTape)
-                  const SizedBox(height: 24, child: _TickerTape()),
+                // if (showTickerTape)
+                //   const SizedBox(height: 24, child: _TickerTape()),
               ],
             ),
           ),
@@ -550,105 +550,105 @@ class _LocationOptionTile extends StatelessWidget {
 }
 // ── Scrolling ticker tape ─────────────────────────────────────────────────────
 
-class _TickerTape extends StatefulWidget {
-  const _TickerTape();
+// class _TickerTape extends StatefulWidget {
+//   const _TickerTape();
 
-  @override
-  State<_TickerTape> createState() => _TickerTapeState();
-}
+//   @override
+//   State<_TickerTape> createState() => _TickerTapeState();
+// }
 
-class _TickerTapeState extends State<_TickerTape>
-    with SingleTickerProviderStateMixin {
-  AnimationController? _ctrl;
-  String _lastText = '';
-  double _lastWidth = 0;
+// class _TickerTapeState extends State<_TickerTape>
+//     with SingleTickerProviderStateMixin {
+//   AnimationController? _ctrl;
+//   String _lastText = '';
+//   double _lastWidth = 0;
 
-  static const _style = TextStyle(
-    fontSize: 11.5,
-    color: Color(0xFF1A3A6B),
-    fontWeight: FontWeight.w500,
-    letterSpacing: 0.3,
-  );
+//   static const _style = TextStyle(
+//     fontSize: 11.5,
+//     color: Color(0xFF1A3A6B),
+//     fontWeight: FontWeight.w500,
+//     letterSpacing: 0.3,
+//   );
 
-  // pixels per second scrolling speed
-  static const double _speed = 52.0;
+//   // pixels per second scrolling speed
+//   static const double _speed = 52.0;
 
-  double _textWidth(String text) {
-    final tp = TextPainter(
-      text: TextSpan(text: text, style: _style),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    )..layout(minWidth: 0, maxWidth: double.infinity);
-    return tp.width;
-  }
+//   double _textWidth(String text) {
+//     final tp = TextPainter(
+//       text: TextSpan(text: text, style: _style),
+//       textDirection: TextDirection.ltr,
+//       maxLines: 1,
+//     )..layout(minWidth: 0, maxWidth: double.infinity);
+//     return tp.width;
+//   }
 
-  void _restart(String text, double containerWidth) {
-    _ctrl?.dispose();
-    final tw = _textWidth(text);
-    final total = containerWidth + tw;
-    final ms = (total / _speed * 1000).round().clamp(4000, 60000);
-    _ctrl =
-        AnimationController(
-            vsync: this,
-            duration: Duration(milliseconds: ms),
-          )
-          ..addListener(() {
-            if (mounted) setState(() {});
-          })
-          ..repeat();
-    _lastText = text;
-    _lastWidth = containerWidth;
-  }
+//   void _restart(String text, double containerWidth) {
+//     _ctrl?.dispose();
+//     final tw = _textWidth(text);
+//     final total = containerWidth + tw;
+//     final ms = (total / _speed * 1000).round().clamp(4000, 60000);
+//     _ctrl =
+//         AnimationController(
+//             vsync: this,
+//             duration: Duration(milliseconds: ms),
+//           )
+//           ..addListener(() {
+//             if (mounted) setState(() {});
+//           })
+//           ..repeat();
+//     _lastText = text;
+//     _lastWidth = containerWidth;
+//   }
 
-  @override
-  void dispose() {
-    _ctrl?.dispose();
-    super.dispose();
-  }
+//   @override
+//   void dispose() {
+//     _ctrl?.dispose();
+//     super.dispose();
+//   }
 
-  @override
-  Widget build(BuildContext context) {
-    final notifications = context
-        .watch<AdminNotificationProvider>()
-        .notifications;
-    final text = notifications.isEmpty
-        ? '📢 কোন নতুন বিজ্ঞপ্তি নেই'
-        : '📢  ${notifications.map((n) => n.title).join('   •   ')}   ';
+//   @override
+//   Widget build(BuildContext context) {
+//     final notifications = context
+//         .watch<AdminNotificationProvider>()
+//         .notifications;
+//     final text = notifications.isEmpty
+//         ? '📢 কোন নতুন বিজ্ঞপ্তি নেই'
+//         : '📢  ${notifications.map((n) => n.title).join('   •   ')}   ';
 
-    return LayoutBuilder(
-      builder: (ctx, constraints) {
-        final w = constraints.maxWidth;
+//     return LayoutBuilder(
+//       builder: (ctx, constraints) {
+//         final w = constraints.maxWidth;
 
-        if (_ctrl == null || text != _lastText || (w - _lastWidth).abs() > 1) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && (text != _lastText || (w - _lastWidth).abs() > 1)) {
-              _restart(text, w);
-            }
-          });
-        }
+//         if (_ctrl == null || text != _lastText || (w - _lastWidth).abs() > 1) {
+//           WidgetsBinding.instance.addPostFrameCallback((_) {
+//             if (mounted && (text != _lastText || (w - _lastWidth).abs() > 1)) {
+//               _restart(text, w);
+//             }
+//           });
+//         }
 
-        final value = _ctrl?.value ?? 0.0;
-        final tw = _textWidth(text);
-        final offset = w - value * (w + tw);
+//         final value = _ctrl?.value ?? 0.0;
+//         final tw = _textWidth(text);
+//         final offset = w - value * (w + tw);
 
-        return Container(
-          decoration: const BoxDecoration(
-            border: Border(
-              top: BorderSide(color: Color(0x18003A8C), width: 0.8),
-            ),
-            color: Color(0x0E1565C0),
-          ),
-          child: ClipRect(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Transform.translate(
-                offset: Offset(offset, 0),
-                child: Text(text, style: _style, maxLines: 1, softWrap: false),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
+//         return Container(
+//           decoration: const BoxDecoration(
+//             border: Border(
+//               top: BorderSide(color: Color(0x18003A8C), width: 0.8),
+//             ),
+//             color: Color(0x0E1565C0),
+//           ),
+//           child: ClipRect(
+//             child: Align(
+//               alignment: Alignment.centerLeft,
+//               child: Transform.translate(
+//                 offset: Offset(offset, 0),
+//                 child: Text(text, style: _style, maxLines: 1, softWrap: false),
+//               ),
+//             ),
+//           ),
+//         );
+//       },
+//     );
+//   }
+// }

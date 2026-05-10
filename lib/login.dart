@@ -220,8 +220,8 @@ class _LoginPageState extends State<LoginPage> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text('মোবাইল নম্বর দিন', textAlign: TextAlign.center),
-              const SizedBox(height: 32),
+              const Text('Robi/Airtel নম্বর দিন', textAlign: TextAlign.center),
+              // const SizedBox(height: 32),
               const SizedBox(height: 8),
               Text(
                 // 'Daily 2 taka(VAT+SD+SC) subscription charge',

@@ -89,7 +89,7 @@ class _AppDrawerState extends State<AppDrawer> {
     );
 
     if (shouldUnsubscribe != true) return;
-
+    if(!mounted) return;
     // Close drawer after confirmation so this State stays valid for the dialog.
     Navigator.pop(context);
 
