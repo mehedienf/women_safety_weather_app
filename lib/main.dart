@@ -144,9 +144,17 @@ class _StartupGateState extends State<_StartupGate> {
           final data = jsonDecode(response.body);
           final status =
               data['subscriptionStatus']?.toString().toUpperCase() ?? '';
+
           final boolFlag = data['isSubscribed'];
           final isSubscribedFlag =
               boolFlag == true || boolFlag?.toString() == '1';
+
+          // API অনুযায়ী: "INITIAL CHARGING PENDING" হলে user লগইন থাকবে।
+          // তাই "pending/processing" স্ট্যাটাসে auto logout করাবো না।
+          final isPending =
+              status == 'INITIAL CHARGING PENDING' ||
+              status == 'CHARGING PENDING' ||
+              status == 'PENDING';
 
           final isSubscribed =
               isSubscribedFlag ||
@@ -154,7 +162,7 @@ class _StartupGateState extends State<_StartupGate> {
               status == 'ACTIVATED' ||
               status == 'REGISTERED';
 
-          if (!isSubscribed) {
+          if (!isSubscribed && !isPending) {
             goHome = false;
             await prefs.setBool('isLoggedIn', false);
           }
