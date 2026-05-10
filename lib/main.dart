@@ -1,23 +1,23 @@
 ﻿import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'guidelines_page.dart';
+import 'login.dart';
+import 'providers/admin_notification_provider.dart';
 import 'providers/app_provider.dart';
+import 'providers/contact_provider.dart';
 import 'providers/forecast_provider.dart';
 import 'providers/shelter_provider.dart';
-import 'providers/contact_provider.dart';
-import 'providers/admin_notification_provider.dart';
-
-import 'login.dart';
-import 'women_safety_page.dart';
-import 'guidelines_page.dart';
+import 'services/notification_service.dart';
 import 'settings_page.dart';
 import 'widgets/app_drawer.dart';
-import 'services/notification_service.dart';
+import 'women_safety_page.dart';
 
 const String _baseUrl = 'https://flicksize.com/women_safety/';
 
@@ -130,10 +130,12 @@ class _StartupGateState extends State<_StartupGate> {
 
     if (isLoggedIn && phone.isNotEmpty && _isAllowedRobiAirtel(phone)) {
       try {
-        final response = await http.post(
-          Uri.parse('$_baseUrl/check_subscription.php'),
-          body: {'user_mobile': phone},
-        ).timeout(const Duration(seconds: 5));
+        final response = await http
+            .post(
+              Uri.parse('$_baseUrl/check_subscription.php'),
+              body: {'user_mobile': phone},
+            )
+            .timeout(const Duration(seconds: 5));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -143,11 +145,12 @@ class _StartupGateState extends State<_StartupGate> {
           final isSubscribedFlag =
               boolFlag == true || boolFlag?.toString() == '1';
 
-          final isSubscribed = isSubscribedFlag ||
+          final isSubscribed =
+              isSubscribedFlag ||
               status == 'SUBSCRIBED' ||
               status == 'ACTIVATED' ||
               status == 'REGISTERED';
-              
+
           if (!isSubscribed) {
             goHome = false;
             await prefs.setBool('isLoggedIn', false);
