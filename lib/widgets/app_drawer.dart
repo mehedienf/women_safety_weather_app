@@ -248,12 +248,12 @@ class _AppDrawerState extends State<AppDrawer> {
                     onNavigate(6);
                   },
                 ),
-                _DrawerItem(
-                  icon: Icons.info_outline_rounded,
-                  label: 'অ্যাপ সম্পর্কে',
-                  onTap: () => Navigator.pop(context),
-                  comingSoon: true,
-                ),
+                // _DrawerItem(
+                //   icon: Icons.info_outline_rounded,
+                //   label: 'অ্যাপ সম্পর্কে',
+                //   onTap: () => Navigator.pop(context),
+                //   comingSoon: true,
+                // ),
                 _DrawerItem(
                   icon: Icons.remove_circle_outline_rounded,
                   label: _unsubscribing
